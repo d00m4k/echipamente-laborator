@@ -1,0 +1,17 @@
+{
+    "echipamente": [
+        {
+            "nume": "antena",
+            "responsabil": null
+        },
+        {
+            "nume": "tuner",
+            "responsabil": null
+        },
+        {
+            "nume": "microfon",
+            "responsabil": null
+        }
+    ],
+    "persoane": []
+}

@@ -1,0 +1,173 @@
+import json
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+
+# Nume fișier pentru salvarea datelor
+FILE_NAME = "echipamente.json"
+
+# Funcție pentru încărcarea datelor din fișier
+def incarca_date():
+    try:
+        with open(FILE_NAME, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"echipamente": [], "persoane": []}
+    except json.JSONDecodeError:
+        return {"echipamente": [], "persoane": []}
+
+# Funcție pentru salvarea datelor în fișier
+def salveaza_date(date):
+    with open(FILE_NAME, "w") as f:
+        json.dump(date, f, indent=4)
+
+# Funcție pentru afișarea echipamentelor și persoanelor
+def afiseaza_date(listbox):
+    listbox.delete(0, tk.END)
+    date = incarca_date()
+    listbox.insert(tk.END, "Echipamente:")
+    for idx, echipament in enumerate(date["echipamente"], start=1):
+        responsabil = echipament.get("responsabil", "Nimeni")
+        listbox.insert(tk.END, f"  {idx}. {echipament['nume']} - Luat de: {responsabil}")
+
+    listbox.insert(tk.END, "\nPersoane:")
+    for idx, persoana in enumerate(date["persoane"], start=1):
+        listbox.insert(tk.END, f"  {idx}. {persoana}")
+
+# Funcție pentru adăugarea unui echipament
+def adauga_echipament(root, listbox):
+    nume = simpledialog.askstring("Adaugă Echipament", "Introduceți numele echipamentului:", parent=root)
+    if not nume:
+        return
+
+    date = incarca_date()
+    date["echipamente"].append({"nume": nume, "responsabil": None})
+    salveaza_date(date)
+    afiseaza_date(listbox)
+
+# Funcție pentru adăugarea unei persoane
+def adauga_persoana(root, listbox):
+    nume = simpledialog.askstring("Adaugă Persoană", "Introduceți numele persoanei:", parent=root)
+    if not nume:
+        return
+
+    date = incarca_date()
+    date["persoane"].append(nume)
+    salveaza_date(date)
+    afiseaza_date(listbox)
+
+# Funcție pentru asignarea unui echipament unei persoane
+def asignare_echipament(root, listbox):
+    date = incarca_date()
+    echipamente = date["echipamente"]
+    persoane = date["persoane"]
+
+    if not echipamente:
+        messagebox.showwarning("Atenție", "Nu există echipamente adăugate!", parent=root)
+        return
+
+    if not persoane:
+        messagebox.showwarning("Atenție", "Nu există persoane adăugate!", parent=root)
+        return
+
+    nume_echipament = simpledialog.askstring("Asignare Echipament", "Introduceți numele echipamentului:", parent=root)
+    echipament = next((e for e in echipamente if e["nume"] == nume_echipament), None)
+    if not echipament:
+        messagebox.showwarning("Atenție", "Echipamentul nu există!", parent=root)
+        return
+
+    persoana = simpledialog.askstring("Asignare Echipament", "Introduceți numele persoanei responsabile:", parent=root)
+    if persoana not in persoane:
+        messagebox.showwarning("Atenție", "Persoana nu există în listă!", parent=root)
+        return
+
+    echipament["responsabil"] = persoana
+    salveaza_date(date)
+    afiseaza_date(listbox)
+
+# Funcție pentru returnarea unui echipament
+def returnare_echipament(root, listbox):
+    date = incarca_date()
+    echipamente = date["echipamente"]
+
+    nume_echipament = simpledialog.askstring("Returnare Echipament", "Introduceți numele echipamentului:", parent=root)
+    echipament = next((e for e in echipamente if e["nume"] == nume_echipament), None)
+    if not echipament:
+        messagebox.showwarning("Atenție", "Echipamentul nu există!", parent=root)
+        return
+
+    if not echipament["responsabil"]:
+        messagebox.showwarning("Atenție", "Echipamentul nu este asignat nimănui!", parent=root)
+        return
+
+    echipament["responsabil"] = None
+    salveaza_date(date)
+    afiseaza_date(listbox)
+
+# Funcție pentru ștergerea unui echipament sau a unei persoane
+def sterge_element(root, listbox):
+    date = incarca_date()
+
+    # Afișăm opțiunile pentru ștergere (echipamente și persoane)
+    optiune = simpledialog.askstring("Șterge Element", 
+                                      "Introduceți numele echipamentului sau persoanei pe care doriți să o ștergeți:", 
+                                      parent=root)
+    if not optiune:
+        return
+
+    # Verificăm dacă elementul este echipament
+    echipament = next((e for e in date["echipamente"] if e["nume"] == optiune), None)
+    if echipament:
+        date["echipamente"] = [e for e in date["echipamente"] if e["nume"] != optiune]
+        messagebox.showinfo("Succes", f"Echipamentul '{optiune}' a fost șters.", parent=root)
+    else:
+        # Verificăm dacă elementul este persoană
+        if optiune in date["persoane"]:
+            date["persoane"] = [p for p in date["persoane"] if p != optiune]
+            messagebox.showinfo("Succes", f"Persoana '{optiune}' a fost ștearsă.", parent=root)
+        else:
+            messagebox.showwarning("Atenție", "Elementul nu a fost găsit!", parent=root)
+            return
+
+    salveaza_date(date)
+    afiseaza_date(listbox)
+
+# Funcție principală pentru interfața grafică
+def main():
+    root = tk.Tk()
+    root.title("Manager Echipamente Electronice - Laborator")
+
+    frame = tk.Frame(root)
+    frame.pack(pady=10)
+
+    listbox = tk.Listbox(frame, width=80, height=20)
+    listbox.pack(side=tk.LEFT, padx=10)
+
+    scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL, command=listbox.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    listbox.config(yscrollcommand=scrollbar.set)
+
+    afiseaza_date(listbox)
+
+    btn_frame = tk.Frame(root)
+    btn_frame.pack(pady=10)
+
+    btn_add_eq = tk.Button(btn_frame, text="Adaugă Echipament", command=lambda: adauga_echipament(root, listbox))
+    btn_add_eq.grid(row=0, column=0, padx=5)
+
+    btn_add_person = tk.Button(btn_frame, text="Adaugă Persoană", command=lambda: adauga_persoana(root, listbox))
+    btn_add_person.grid(row=0, column=1, padx=5)
+
+    btn_assign = tk.Button(btn_frame, text="Asignare Echipament", command=lambda: asignare_echipament(root, listbox))
+    btn_assign.grid(row=0, column=2, padx=5)
+
+    btn_return = tk.Button(btn_frame, text="Returnare Echipament", command=lambda: returnare_echipament(root, listbox))
+    btn_return.grid(row=0, column=3, padx=5)
+
+    btn_delete = tk.Button(root, text="Șterge Element", command=lambda: sterge_element(root, listbox))
+    btn_delete.pack(pady=10)
+
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
